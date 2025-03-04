@@ -1,0 +1,48 @@
+{
+    "carSchema": {
+      "description": "Esquema para la colección de autos en la base de datos.",
+      "fields": {
+        "seller_id": { "type": "ObjectId", "ref": "User", "required": true, "description": "Referencia al usuario vendedor." },
+        "brand": { "type": "String", "required": true, "description": "Marca del auto." },
+        "model": { "type": "String", "required": true, "description": "Modelo del auto." },
+        "year": { "type": "Number", "required": true, "description": "Año de fabricación del auto." },
+        "price": { "type": "Number", "required": true, "description": "Precio del auto." },
+        "mileage": { "type": "Number", "required": true, "description": "Kilometraje del auto." },
+        "fuel_type": { "type": "String", "enum": ["Gasolina", "Diésel", "Eléctrico", "Híbrido"], "required": true, "description": "Tipo de combustible del auto." },
+        "transmission": { "type": "String", "enum": ["Manual", "Automático"], "required": true, "description": "Tipo de transmisión del auto." },
+        "location": { "type": "String", "required": true, "description": "Ubicación del auto." },
+        "status": { "type": "String", "enum": ["Disponible", "Vendido"], "default": "Disponible", "description": "Estado de disponibilidad del auto." },
+        "created_at": { "type": "Date", "default": "Date.now", "description": "Fecha de creación del registro." }
+      }
+    },
+    "invoiceSchema": {
+      "description": "Esquema para la colección de facturas en la base de datos.",
+      "fields": {
+        "buyer_id": { "type": "ObjectId", "ref": "User", "required": true, "description": "Referencia al usuario comprador." },
+        "seller_id": { "type": "ObjectId", "ref": "User", "required": true, "description": "Referencia al usuario vendedor." },
+        "car_id": { "type": "ObjectId", "ref": "Car", "required": true, "description": "Referencia al auto vendido." },
+        "price": { "type": "Number", "required": true, "description": "Precio de venta del auto." },
+        "payment_method": { "type": "String", "enum": ["Transferencia", "Tarjeta", "Efectivo"], "required": true, "description": "Método de pago utilizado." },
+        "created_at": { "type": "Date", "default": "Date.now", "description": "Fecha de creación del registro." }
+      }
+    },
+    "favoriteSchema": {
+      "description": "Esquema para la colección de favoritos en la base de datos.",
+      "fields": {
+        "user_id": { "type": "ObjectId", "ref": "User", "required": true, "description": "Referencia al usuario que marca como favorito." },
+        "car_id": { "type": "ObjectId", "ref": "Car", "required": true, "description": "Referencia al auto marcado como favorito." }
+      }
+    },
+    "userSchema": {
+      "description": "Esquema para la colección de usuarios en la base de datos.",
+      "fields": {
+        "name": { "type": "String", "required": true, "description": "Nombre del usuario." },
+        "email": { "type": "String", "unique": true, "required": true, "description": "Correo electrónico del usuario." },
+        "password": { "type": "String", "required": true, "description": "Contraseña del usuario." },
+        "phone": { "type": "String", "description": "Número de teléfono del usuario." },
+        "role": { "type": "String", "enum": ["buyer", "seller"], "required": true, "description": "Rol del usuario en la plataforma." },
+        "created_at": { "type": "Date", "default": "Date.now", "description": "Fecha de creación del registro." }
+      }
+    }
+  }
+  
