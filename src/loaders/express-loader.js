@@ -8,7 +8,7 @@ import compression from 'compression';
 import router from '../routes/index.js';
 import { errorMiddleware } from '../middlewares/error-middleware.js';
 import { morganMiddleware } from '../config/morgan.js';
-import { swaggerDoc } from '../openapi/index.js';
+import { swaggerSpec } from '../openapi/swagger.js';
 
 export default function(server){   
     /* Config */
@@ -26,8 +26,7 @@ export default function(server){
     /* Static files */
     server.use(express.static('public'));
     /* Swagger */
-    server.get('/docs', (req, res) => res.send(swaggerDoc));
-    server.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDoc));
+    server.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
     /* MDW */
     server.use(morganMiddleware);
     /* Routes */

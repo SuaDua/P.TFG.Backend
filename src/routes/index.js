@@ -1,11 +1,8 @@
-import express from 'express';
-import { login } from '../controllers/login-controller.js';
+import { Router } from 'express';
 import miscRouter from './misc-router.js';
 
-const router = express.Router();
+const router = Router();
 
-router.post('/login', login);
+router.use('/misc', miscRouter); // Agrega las rutas necesarias
 
-router.use(miscRouter);
-
-export default router;
+export default router; // ✅ Exportamos `default`
