@@ -1,69 +1,67 @@
 import bcrypt from 'bcrypt';
-import { HttpStatusError } from 'common-errors';
 import jwt from 'jsonwebtoken';
-
+import { HttpStatusError } from 'common-errors';
 import config from '../config.js';
+import User from '../models/user.js';
 
-// Simulated database functions
-const users = []; // This should be replaced with actual database calls
-
-function findUser(username) {
-    return users.find(user => user.username === username);
-}
-
-function createUser(username, password) {
-    const hashedPassword = bcrypt.hashSync(password, 10);
-    const newUser = { id: users.length + 1, username, password: hashedPassword };
-    users.push(newUser);
-    return newUser;
-}
-
-export function login(req, res, next) {
+export async function login(req, res, next) {
     const { username, password } = req.body;
 
-    const user = findUser(username);
+    try {
+        const user = await User.findOne({ username });
 
-    if (user) {
-        if (bcrypt.compareSync(password, user.password)) {
-            const userInfo = { id: user.id, name: user.username };
+        if (user && bcrypt.compareSync(password, user.password)) {
+            const userInfo = { id: user._id, name: user.username };
             const jwtConfig = { expiresIn: '1h' };
             const token = jwt.sign(userInfo, config.app.secretKey, jwtConfig);
             return res.send({ token });
         }
-    }
 
-    throw new HttpStatusError(401, 'Invalid credentials');
+        throw new HttpStatusError(401, 'Invalid credentials');
+    } catch (error) {
+        next(error);
+    }
 }
 
-export function register(req, res, next) {
+export async function register(req, res, next) {
     const { username, password } = req.body;
 
-    if (findUser(username)) {
-        throw new HttpStatusError(409, 'User already exists');
-    }
+    try {
+        if (await User.findOne({ username })) {
+            throw new HttpStatusError(409, 'User already exists');
+        }
 
-    const newUser = createUser(username, password);
-    res.status(201).send({ id: newUser.id, username: newUser.username });
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        const newUser = new User({ username, password: hashedPassword });
+        await newUser.save();
+
+        const userInfo = { id: newUser._id, name: newUser.username };
+        const jwtConfig = { expiresIn: '1h' };
+        const token = jwt.sign(userInfo, config.app.secretKey, jwtConfig);
+        res.status(201).send({ id: newUser._id, username: newUser.username, token });
+    } catch (error) {
+        next(error);
+    }
 }
 
-export function recoverPassword(req, res, next) {
+export async function recoverPassword(req, res, next) {
     const { username, newPassword } = req.body;
 
-    const user = findUser(username);
+    try {
+        const user = await User.findOne({ username });
 
-    if (!user) {
-        throw new HttpStatusError(404, 'User not found');
+        if (!user) {
+            throw new HttpStatusError(404, 'User not found');
+        }
+
+        user.password = bcrypt.hashSync(newPassword, 10);
+        await user.save();
+
+        const userInfo = { id: user._id, name: user.username };
+        const jwtConfig = { expiresIn: '1h' };
+        const token = jwt.sign(userInfo, config.app.secretKey, jwtConfig);
+        res.send({ message: 'Password updated successfully', token });
+    } catch (error) {
+        next(error);
     }
-
-    user.password = bcrypt.hashSync(newPassword, 10);
-    res.send({ message: 'Password updated successfully' });
 }
-
-
-
-
-
-
-
-
-
