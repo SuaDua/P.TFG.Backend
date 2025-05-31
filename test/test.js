@@ -2,71 +2,125 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { HttpStatusError } from 'common-errors';
 import { login, register, recoverPassword } from '../src/controllers/login-controller.js';
+import User from '../src/models/user.js';
 
 jest.mock('bcrypt');
 jest.mock('jsonwebtoken');
+jest.mock('../src/models/user.js');
 
 describe('User Controller', () => {
-    let req, res, next;
+  let req, res, next;
 
-    beforeEach(() => {
-        req = { body: {} };
-        res = { send: jest.fn(), status: jest.fn().mockReturnThis() };
-        next = jest.fn();
+  beforeEach(() => {
+    req = { body: {} };
+    res = {
+      send: jest.fn(),
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn()
+    };
+    next = jest.fn();
+    jest.clearAllMocks();
+  });
+
+  describe('login', () => {
+    it('should return a token for valid credentials', async () => {
+      req.body = { username: 'testuser', password: 'password' };
+      const mockUser = { _id: '123', username: 'testuser', password: 'hashedpass', role: 'comprador' };
+
+      User.findOne.mockResolvedValue(mockUser);
+      bcrypt.compareSync.mockReturnValue(true);
+      jwt.sign.mockReturnValue('token123');
+
+      await login(req, res, next);
+
+      expect(res.send).toHaveBeenCalledWith({
+        token: 'token123',
+        id: '123',
+        role: 'comprador'
+      });
     });
 
-    describe('login', () => {
-        it('should return a token for valid credentials', async () => {
-            req.body = { username: 'testuser', password: 'password' };
-            const user = { id: 1, username: 'testuser', password: 'hashedpassword' };
-            bcrypt.compareSync.mockReturnValue(true);
-            jwt.sign.mockReturnValue('token');
+    it('should call next with error on invalid credentials', async () => {
+      req.body = { username: 'testuser', password: 'wrongpass' };
+      User.findOne.mockResolvedValue({ _id: '123', username: 'testuser', password: 'hashedpass', role: 'comprador' });
+      bcrypt.compareSync.mockReturnValue(false);
 
-            await login(req, res, next);
+      await login(req, res, next);
 
-            expect(res.send).toHaveBeenCalledWith({ token: 'token' });
-        });
+      expect(next).toHaveBeenCalledWith(expect.any(HttpStatusError));
+    });
+  });
 
-        it('should throw an error for invalid credentials', async () => {
-            req.body = { username: 'testuser', password: 'wrongpassword' };
-            bcrypt.compareSync.mockReturnValue(false);
+  describe('register', () => {
+    it('should create new user', async () => {
+      req.body = { username: 'newuser', password: '1234' };
 
-            await expect(login(req, res, next)).rejects.toThrow(HttpStatusError);
-        });
+      User.findOne.mockResolvedValue(null);
+      bcrypt.hashSync.mockReturnValue('hashed');
+
+      const mockSave = jest.fn().mockResolvedValue(true);
+      User.mockImplementation(() => ({
+        save: mockSave,
+        _id: '456',
+        username: 'newuser',
+        role: 'comprador'
+      }));
+
+      jwt.sign.mockReturnValue('token456');
+
+      await register(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.send).toHaveBeenCalledWith({
+        id: '456',
+        username: 'newuser',
+        role: 'comprador',
+        token: 'token456'
+      });
     });
 
-    describe('register', () => {
-        it('should create a new user', async () => {
-            req.body = { username: 'newuser', password: 'password' };
-            bcrypt.hashSync.mockReturnValue('hashedpassword');
+    it('should fail if user already exists', async () => {
+      req.body = { username: 'existing', password: '1234' };
+      User.findOne.mockResolvedValue({ username: 'existing' });
 
-            await register(req, res, next);
+      await register(req, res, next);
 
-            expect(res.status).toHaveBeenCalledWith(201);
-            expect(res.send).toHaveBeenCalledWith({ username: 'newuser' });
-        });
+      expect(next).toHaveBeenCalledWith(expect.any(HttpStatusError));
+    });
+  });
 
-        it('should throw an error if user already exists', async () => {
-            req.body = { username: 'existinguser', password: 'password' };
+  describe('recoverPassword', () => {
+    it('should update password if user exists', async () => {
+      req.body = { username: 'testuser', newPassword: 'nueva' };
+      const mockUser = {
+        _id: '789',
+        username: 'testuser',
+        role: 'comprador',
+        save: jest.fn()
+      };
 
-            await expect(register(req, res, next)).rejects.toThrow(HttpStatusError);
-        });
+      User.findOne.mockResolvedValue(mockUser);
+      bcrypt.hashSync.mockReturnValue('newhashed');
+      jwt.sign.mockReturnValue('token789');
+
+      await recoverPassword(req, res, next);
+
+      expect(mockUser.save).toHaveBeenCalled();
+      expect(res.send).toHaveBeenCalledWith({
+        message: 'Password updated successfully',
+        token: 'token789',
+        id: '789',
+        role: 'comprador'
+      });
     });
 
-    describe('recoverPassword', () => {
-        it('should update the password for an existing user', async () => {
-            req.body = { username: 'testuser', newPassword: 'newpassword' };
-            bcrypt.hashSync.mockReturnValue('newhashedpassword');
+    it('should fail if user not found', async () => {
+      req.body = { username: 'unknown', newPassword: '1234' };
+      User.findOne.mockResolvedValue(null);
 
-            await recoverPassword(req, res, next);
+      await recoverPassword(req, res, next);
 
-            expect(res.send).toHaveBeenCalledWith({ message: 'Password updated successfully' });
-        });
-
-        it('should throw an error if user is not found', async () => {
-            req.body = { username: 'nonexistentuser', newPassword: 'newpassword' };
-
-            await expect(recoverPassword(req, res, next)).rejects.toThrow(HttpStatusError);
-        });
+      expect(next).toHaveBeenCalledWith(expect.any(HttpStatusError));
     });
+  });
 });

@@ -1,50 +1,74 @@
-const Invoice = require('../models/invoice.model');
+import Invoice from '../models/Invoice.js';
+import Car from '../models/car.js';
+import User from '../models/user.js';
 
-
-exports.createInvoice = async (req, res) => {
+// POST: Crear una factura de compra
+export const createInvoice = async (req, res) => {
   try {
-    const { buyer_id, seller_id, car_id, price, payment_method } = req.body;
+    const { seller_id, car_id, payment_method } = req.body;
+    const buyer_id = req.user.id;
 
-    const newInvoice = new Invoice({
+    const car = await Car.findById(car_id);
+    if (!car) {
+      return res.status(404).json({ message: 'Coche no encontrado' });
+    }
+
+    const invoice = new Invoice({
       buyer_id,
       seller_id,
       car_id,
-      price,
-      payment_method
+      price: car.price,
+      payment_method,
     });
 
-    await newInvoice.save();
-    res.status(201).json(newInvoice);
+    await invoice.save();
+    res.status(201).json({ message: 'Factura creada con éxito', invoice });
   } catch (error) {
-    res.status(500).json({ message: 'Error al crear la factura', error });
+    console.error('❌ Error al crear factura:', error);
+    res.status(500).json({ message: 'Error del servidor' });
   }
 };
 
-
-exports.getAllInvoices = async (req, res) => {
+// GET: Obtener facturas del usuario logueado
+export const getMyInvoices = async (req, res) => {
   try {
-    const invoices = await Invoice.find()
-      .populate('buyer_id', 'name email')
-      .populate('seller_id', 'name email')
-      .populate('car_id');
+    const buyer_id = req.user.id;
+    const invoices = await Invoice.find({ buyer_id })
+      .populate('car_id')
+      .populate('seller_id', 'username');
     res.json(invoices);
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener facturas', error });
+    console.error('❌ Error al obtener facturas del usuario:', error);
+    res.status(500).json({ message: 'Error del servidor' });
   }
 };
 
-
-exports.getInvoiceById = async (req, res) => {
+// GET: Obtener todas las facturas (solo admin)
+export const getAllInvoices = async (req, res) => {
   try {
-    const invoice = await Invoice.findById(req.params.id)
-      .populate('buyer_id', 'name email')
-      .populate('seller_id', 'name email')
-      .populate('car_id');
-
-    if (!invoice) return res.status(404).json({ message: 'Factura no encontrada' });
-
-    res.json(invoice);
+    const invoices = await Invoice.find()
+      .populate('car_id')
+      .populate('buyer_id', 'username')
+      .populate('seller_id', 'username');
+    res.json(invoices);
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener la factura', error });
+    console.error('❌ Error al obtener todas las facturas:', error);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+};
+
+// DELETE: Eliminar una factura por ID (solo admin)
+export const deleteInvoiceById = async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ message: 'Factura no encontrada' });
+    }
+
+    await Invoice.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Factura eliminada correctamente' });
+  } catch (error) {
+    console.error('❌ Error al eliminar factura:', error);
+    res.status(500).json({ message: 'Error del servidor' });
   }
 };

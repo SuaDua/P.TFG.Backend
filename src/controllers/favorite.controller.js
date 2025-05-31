@@ -1,7 +1,6 @@
-const Favorite = require('../models/favorite.model');
+import Favorite from '../models/favorite.js';
 
-
-exports.addFavorite = async (req, res) => {
+export const addFavorite = async (req, res) => {
   try {
     const { user_id, car_id } = req.body;
 
@@ -18,8 +17,7 @@ exports.addFavorite = async (req, res) => {
   }
 };
 
-
-exports.getFavoritesByUser = async (req, res) => {
+export const getFavoritesByUser = async (req, res) => {
   try {
     const { user_id } = req.params;
     const favorites = await Favorite.find({ user_id }).populate('car_id');
@@ -29,7 +27,7 @@ exports.getFavoritesByUser = async (req, res) => {
   }
 };
 
-exports.deleteFavorite = async (req, res) => {
+export const deleteFavorite = async (req, res) => {
   try {
     const { id } = req.params;
     await Favorite.findByIdAndDelete(id);

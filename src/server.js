@@ -1,41 +1,44 @@
-const express = require('express'); 
-const cors = require('cors');
-const mongoose = require('mongoose');
-require('dotenv').config(); // Si usas archivo .env
+import express from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './openapi/swagger.js';
+import carRoutes from './routes/cars.routes.js';
+import authRoutes from './routes/auth.routes.js';
+import favoriteRoutes from './routes/favorite.routes.js';
+import invoiceRoutes from './routes/invoice.routes.js';
+import userRoutes from './routes/user.router.js';
+import adminRoutes from './routes/admin.routes.js';
+
+dotenv.config();
 
 const app = express();
 
-// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// ✅ Conexión a MongoDB Atlas (cadena de conexión sin espacios y con base de datos)
-mongoose.connect("mongodb+srv://alvarosuarez:Alvaro%2A2@cluster0.ianhh.mongodb.net/coches", {
+mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/coches", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log("✅ Conectado a MongoDB Atlas"))
-.catch((err) => console.error("❌ Error de conexión a MongoDB:", err));
+.then(() => console.log("✅ Conectado a MongoDB"))
+.catch((err) => console.error("❌ Error de conexión:", err));
 
-// Rutas
-const carRoutes = require('./routes/cars.routes.js');
-app.use('/api/cars', carRoutes);  // Ruta base para API de coches
-
-// ✅ Nueva ruta de autenticación
-const authRoutes = require('./routes/auth.routes.js');
-app.use('/api/auth', authRoutes);  // Ruta base para autenticación (login, register, etc.)
-
-// Nueva ruta para favoritos
-const favoriteRoutes = require('./routes/favorite.routes');
+app.use('/api/cars', carRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/favorites', favoriteRoutes);
-
-//Nueva ruta  para la factura
-const invoiceRoutes = require('./routes/invoice.routes');
 app.use('/api/invoices', invoiceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/uploads', express.static('uploads'));
 
-// Puerto
-const PORT = 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 5000;
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
+  });
+}
 
+export default app;
